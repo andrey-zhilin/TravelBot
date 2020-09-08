@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS country(
 country_id  VARCHAR NOT NULL PRIMARY KEY,
 name_primary VARCHAR ,
 currency VARCHAR,
-name_en VARCHAR,
+name_en VARCHAR
 );
 
 CREATE TABLE IF  NOT EXISTS city(
