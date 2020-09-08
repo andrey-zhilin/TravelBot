@@ -12,7 +12,7 @@ coordinates_lon VARCHAR,
 coordinates_lat VARCHAR,
 name_en VARCHAR,
 country_code VARCHAR,
-FOREIGN KEY(country_code) REFERENCES country(country_id)
+FOREIGN KEY(country_code) REFERENCES country(country_id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF  NOT EXISTS transport_point(
@@ -22,7 +22,7 @@ iata_type VARCHAR,
 flightable BOOLEAN,
 name_en VARCHAR,
 city_code VARCHAR,
-FOREIGN KEY(city_code) REFERENCES city(city_id)
+FOREIGN KEY(city_code) REFERENCES city(city_id) ON DELETE SET NULL
 );
 
 

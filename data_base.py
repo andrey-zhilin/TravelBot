@@ -12,14 +12,13 @@ class Data():
     transport_point_list = []
 
     def get_api_data(self):
-        #country_list.self = []
+        
         country_request = requests.get('http://api.travelpayouts.com/data/ru/countries.json')
         for country in country_request.json():
             Data.country_list.append((country['code'],country['name'],country['currency'], \
                 country['name_translations']['en']))
-        #pprint(country_list.self)
+        
 
-        #city_list.self = []
         city_request = requests.get('http://api.travelpayouts.com/data/ru/cities.json')
         for city in city_request.json():
             
@@ -33,9 +32,6 @@ class Data():
             Data.transport_point_list.append((point['code'],point['name'], \
                 point['iata_type'],point['flightable'],point['name_translations']['en'], \
                 point['city_code']))
-            
-        
-
 
     def database(self):
         db_filename = 'transport.db'
