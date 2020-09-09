@@ -11,7 +11,7 @@ def daterange(start_date, end_date):
 
 
 
-def weather(city, start_date = date(2020, 2, 2) , end_date = date(2020, 2, 28)):
+def weather(city, start_date = date(2020, 9, 7) , end_date = date(2020, 9, 9)):
 
 
 

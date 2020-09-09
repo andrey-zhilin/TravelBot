@@ -6,7 +6,7 @@ url  = 'http://api.travelpayouts.com/v2/prices/latest?currency=rub&period_type=y
 print(url)
 
 
-def tickets(token=api_token.token):
+def tickets(token=api_token.token_travel):
     headers = {'X-Access-Token':token}
     response = requests.request("GET",url,headers=headers)
     pprint(response.json())
