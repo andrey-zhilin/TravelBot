@@ -1,1 +1,4 @@
 api_token.py
+transport.db
+.vscode
+__pycache__
