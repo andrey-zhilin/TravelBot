@@ -7,7 +7,8 @@ print(url)
 
 
 def tickets(token=api_token.token_travel):
-    headers = {'X-Access-Token':token}
+    headers = {'X-Access-Token':token,
+    'Accept-Encoding':'gzip, deflate'}
     response = requests.request("GET",url,headers=headers)
     pprint(response.json())
 
