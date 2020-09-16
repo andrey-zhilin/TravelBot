@@ -25,4 +25,19 @@ city_code VARCHAR,
 FOREIGN KEY(city_code) REFERENCES city(city_id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF  NOT EXISTS airlines(
+id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+name_primary VARCHAR,
+name_en VARCHAR, 
+iata_code VARCHAR
+);
 
+CREATE TABLE IF  NOT EXISTS routes(
+id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+airline_iata VARCHAR,
+departure_airport_iata VARCHAR,
+arrival_airport_iata VARCHAR,
+FOREIGN KEY(airline_iata) REFERENCES airlines(iata_code) ON DELETE SET NULL,
+FOREIGN KEY(arrival_airport_iata) REFERENCES transport_point(point_id) ON DELETE SET NULL,
+FOREIGN KEY(departure_airport_iata) REFERENCES transport_point(point_id) ON DELETE SET NULL
+);
