@@ -44,7 +44,7 @@ class Data():
             routes_request = requests.get('http://api.travelpayouts.com/data/routes.json',headers,timeout=1)
             for route in routes_request.json():
                 Data.routes_list.append((route['airline_iata'],route['departure_airport_iata'],route['arrival_airport_iata']))
-            pprint(Data.routes_list)
+           
         except requests.exceptions.RequestException:
             print('Ошибка при загрузке данных: ', e) 
 
