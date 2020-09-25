@@ -1,6 +1,7 @@
 import requests
 import api_token
 from pprint import pprint
+import sqlite3
 
 
 
@@ -8,10 +9,11 @@ from pprint import pprint
 def tickets(origin, destination,  depart_date, return_date, token=api_token.token_travel, direct=False,):  # IATA код города 
     headers = {'X-Access-Token':token,
     'Accept-Encoding':'gzip, deflate'}
-    if direct == False:
-        url = f'http://api.travelpayouts.com/v1/prices/cheap?origin={origin}&destination={destination}'
-    else:
+    if direct :
         url = f'http://api.travelpayouts.com/v1/prices/direct?origin={origin}&destination={destination}&depart_date={depart_date}&return_date={return_date}'
+    else:
+        url = f'http://api.travelpayouts.com/v1/prices/cheap?origin={origin}&destination={destination}'
+        
     try:
         
         response = requests.request("GET",url,headers=headers,timeout=1)
@@ -33,13 +35,23 @@ def tickets(origin, destination,  depart_date, return_date, token=api_token.toke
         else:
             print("Unsuccessful response. Reason:", response.json()['error'] )
     except requests.exceptions.RequestException:
-        print('Ошибка при загрузке данных: ', e)
+        print('Ошибка при загрузке данных')
 
-
+def city_resolver(input_symbols, db_filename='transport.db'):
+    """"Возвращает данные по городам, по фрагменту введенного названия города"""
+    connection = sqlite3.connect(db_filename)
+    cursor = connection.cursor()
+    query = f'SELECT city.name_primary, city_id, coordinates_lon, coordinates_lat, country.name_primary ' \
+        f'FROM city JOIN country WHERE city.name_primary LIKE \'{input_symbols.capitalize()}%\' and city.country_code == country.country_id LIMIT(5);'
+    cursor.execute(query)
+    response = cursor.fetchmany(5)
+    city_dict = {line[1]: {'code':line[0], 'lon': line[2], 'lat': line[3], 'country': line[4]} for line in response}
+    return city_dict
 
 if __name__ == '__main__':
     depart_date = '2020-10'
     return_date = '2020-10'
     origin = 'LED'
-    destination = 'MOW'
+    destination = 'LWN'
     tickets(origin,destination,depart_date, return_date, direct=False)
+    city_resolver("Санкт")
