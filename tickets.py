@@ -41,11 +41,14 @@ def city_resolver(input_symbols, db_filename='transport.db'):
     """"Возвращает данные по городам, по фрагменту введенного названия города"""
     connection = sqlite3.connect(db_filename)
     cursor = connection.cursor()
-    query = f'SELECT city.name_primary, city_id, coordinates_lon, coordinates_lat, country.name_primary ' \
-        f'FROM city JOIN country WHERE city.name_primary LIKE \'{input_symbols.capitalize()}%\' and city.country_code == country.country_id LIMIT(5);'
+    query = f'SELECT city.name_primary, city_id, country.name_primary ' \
+        f'FROM city JOIN country WHERE (city.name_primary LIKE \'{input_symbols.capitalize()}%\' OR city.name_primary LIKE \'%{input_symbols.lower()}%\') ' \
+            f'AND city.country_code == country.country_id LIMIT(5);'
+    print(query)
     cursor.execute(query)
     response = cursor.fetchmany(5)
-    city_dict = {line[1]: {'code':line[0], 'lon': line[2], 'lat': line[3], 'country': line[4]} for line in response}
+    city_dict = {line[0]: {'code':line[1], 'country': line[2]} for line in response}
+    print(city_dict)
     return city_dict
 
 if __name__ == '__main__':
@@ -54,4 +57,4 @@ if __name__ == '__main__':
     origin = 'LED'
     destination = 'LWN'
     tickets(origin,destination,depart_date, return_date, direct=False)
-    city_resolver("Санкт")
+    city_resolver("моск")
