@@ -6,16 +6,12 @@ import sqlite3
 
 
 
-def tickets(origin, destination,  depart_date, return_date, token=api_token.token_travel, direct=False,):  # IATA код города 
+def tickets(origin, destination, token=api_token.token_travel):  # IATA код города 
     headers = {'X-Access-Token':token,
     'Accept-Encoding':'gzip, deflate'}
-    if direct :
-        url = f'http://api.travelpayouts.com/v1/prices/direct?origin={origin}&destination={destination}&depart_date={depart_date}&return_date={return_date}'
-    else:
-        url = f'http://api.travelpayouts.com/v1/prices/cheap?origin={origin}&destination={destination}'
-        
+    url = f'http://api.travelpayouts.com/v1/prices/cheap?origin={origin}&destination={destination}'    
+    
     try:
-        
         response = requests.request("GET",url,headers=headers,timeout=1)
         print(url+'&token='+token)
         pprint(response.json())
@@ -56,6 +52,6 @@ if __name__ == '__main__':
     depart_date = '2020-10'
     return_date = '2020-10'
     origin = 'LED'
-    destination = 'LWN'
-    tickets(origin,destination,depart_date, return_date, direct=False)
-    city_resolver("Москва")
+    destination = 'MIL'
+    tickets(origin,destination)
+    #city_resolver("Москва")
