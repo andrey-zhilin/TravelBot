@@ -34,7 +34,7 @@ def tickets(origin, destination, token=api_token.token_travel):  # IATA код �
         print('Ошибка при загрузке данных')
 
 def city_resolver(input_symbols, db_filename='transport.db'):
-    """"Возвращает данные по городам, по фрагменту введенного названия города"""
+    """"Возвращает возможное название города, по фрагменту введенного названия города"""
     connection = sqlite3.connect(db_filename)
     cursor = connection.cursor()
     query = f'SELECT city.name_primary, city_id, country.name_primary ' \
@@ -54,4 +54,4 @@ if __name__ == '__main__':
     origin = 'LED'
     destination = 'MIL'
     tickets(origin,destination)
-    #city_resolver("Москва")
+    city_resolver("Мос")

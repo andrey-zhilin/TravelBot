@@ -35,7 +35,7 @@ class query():
         self.meta_dict = {'departure_city_code':response[8], 'arrival_city_code':response[9], 'arrival_city_lon':response[10], 'arrival_city_lat':response[11] } # нужен для передачи значения в функцию по поиску билетов
         return self.meta_dict
 
-    def tickets(self, departure_city_code, arrival_city_code, token=api_token.token_travel):  # IATA код города 
+    def tickets(self, departure_city_code, arrival_city_code,arrival_city_lon, arrival_city_lat, token=api_token.token_travel):  # IATA код города 
         """"Ищет дешёвые билеты по выбранному направлению. Записывает данные в словарь для выдачи фронату"""
         headers = {'X-Access-Token':token,
         'Accept-Encoding':'gzip, deflate'}
@@ -70,3 +70,5 @@ q = query('LED')
 q.run()
 pprint(q.meta_dict)
 pprint(q.response_dict)
+
+# сделать, так, чтобы каждая функция класса обновляла уже созданный словарь response_dict = {route:{None}, tickets: {None}, weather:{None}}
