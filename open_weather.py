@@ -5,6 +5,8 @@ import datetime
 
 
 
+
+
 def weather_request(lat,lon):
 
     url = f'https://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&units=metric&exclude=minutely,hourly&lang=ru&appid={api_token.weather_token}'
@@ -41,3 +43,4 @@ if __name__ == '__main__':
     lon = 30.315785
     lat = 59.939039
     weather_request(lat,lon)
+    
