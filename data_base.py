@@ -35,7 +35,7 @@ class Data():
             for point in transport_point_request.json():
                 Data.transport_point_list.append((point['code'],point['name'], \
                     point['iata_type'],point['flightable'],point['name_translations']['en'], \
-                    point['city_code']))
+                        point['city_code'] if (point.get('city_code') is not None) else None))
 
             airlines_request = requests.get('http://api.travelpayouts.com/data/ru/airlines.json',headers,timeout=1)
             for airline in airlines_request.json():
