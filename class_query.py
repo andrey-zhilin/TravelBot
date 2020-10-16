@@ -4,6 +4,10 @@ import re
 from pprint import pprint
 import sqlite3
 from datetime import datetime 
+import time
+import concurrent.futures
+
+
 
 def human_readable_date(input, failed_iso=True, timestamp=False):
     """"Превращает дату в формат %Y-%m-%d-%H:%M:%S """
@@ -17,26 +21,26 @@ def human_readable_date(input, failed_iso=True, timestamp=False):
 
 class query():
     def __init__(self,origin_city):
-        self.response_dict = {'success': False,'route': None, 'weather': None, 'tickets': None}  # в этом словаре будут содержаться данные для выдачи фронту
-        self.meta_dict = {'departure_city_code':None, 'arrival_city_code':None, 'arrival_city_lon':None, 'arrival_city_lat':None }
+        self.token=api_token
+        self.route_dict = {}
+        self.weather_dict = {}
+        self.tickets_dict = {}
         self.origin_city = origin_city
         self.init_validator(self.origin_city)
 
     def init_validator(self, input):
+        """"Проверяет введенные аргумент на соответствие регулярному выражению. Используется для защиты ввода"""
         regex = '^[A-Z,a-z]+$'
         match = re.search(regex,input)
         if match:
-            self.meta_dict.update({'Failed': False})
+            return True
         else:
-            self.meta_dict.update({'Failed': True})
-            self.response_dict.update({'success': False,'reason': 'Input origin Failed'})
+            return False
 
     def choosing_random_route(self, origin_city, db_filename='transport.db'):
         """"Рандомно выбирает из базы маршрут по указанному пункту отправления. 
-        Записывает в словарь response_dict для выдачи фронуту.
+        Записывает в словарь route_dict для выдачи фронуту.
         И в словарь meta_dict для передачи в слудющие функции"""
-        if  self.meta_dict['Failed']:
-            return self.meta_dict
         try:
             connection = sqlite3.connect(db_filename)
             cursor = connection.cursor()
@@ -57,95 +61,124 @@ class query():
             cursor.execute(query)
             response = cursor.fetchone()
             if response is not None:
-                self.response_dict.update({'route': {'departure_airport_iata':response[0], 'arrival_airport_iata':response[1], 'departure_airport_name':response[2], 
+                self.route_dict.update({'departure_airport_iata':response[0], 'arrival_airport_iata':response[1], 'departure_airport_name':response[2], 
                     'arrival_airport_name':response[3],'departure_city_name':response[4], 'arrival_city_name':response[5],'departure_country_name':response[6], 
-                        'arrival_country_name':response[7] }})
-                self.meta_dict.update({'departure_city_code':response[8], 'arrival_city_code':response[9], 'arrival_city_lon':response[10], 'arrival_city_lat':response[11] }) # нужен для передачи значения в функцию по поиску билетов
-                return self.meta_dict
+                        'arrival_country_name':response[7], 'success': True, 'error_description': None})
+                self.data_for_ticket = (response[8],response[9]) # (departure_city_code,arrival_city_code)
+                self.data_for_weather = (response[10],response[11]) # (arrival_city_lon,arrival_city_lat)
+                return self.route_dict
             else:
-                
-                self.response_dict.update({'success': False,'reason': 'No such source transport point'})
-                return self.meta_dict
+                self.route_dict.update({'success': False,'error_description': 'No such source transport point'})
+                return self.route_dict
 
         except sqlite3.Error as e:
-            self.response_dict.update({'success': False, 'reason':str(e)})
-            return self.meta_dict
+            self.route_dict.update({'success': False, 'error_description':str(e)})
+            return self.route_dict
             
-    def weather_and_tickets(self, departure_city_code, arrival_city_code,arrival_city_lon, arrival_city_lat, token=api_token.token_travel, Failed=False):
-        if Failed:
-            return self.response_dict
+    
 
-        def tickets(self):  # IATA код города 
-            """"Ищет дешёвые билеты по выбранному направлению. Записывает данные в словарь для выдачи фронту"""
-            headers = {'X-Access-Token':token,
-            'Accept-Encoding':'gzip, deflate'} 
-            url = f'http://api.travelpayouts.com/v1/prices/direct?origin={departure_city_code}&destination={arrival_city_code}'
-            
-            try:
-                response = requests.request("GET",url,headers=headers,timeout=1)
-                #print(url+'&token='+token)
-                #pprint(response.json())
+    def tickets(self,departure_city_code, arrival_city_code):  # IATA код города 
+        """"Ищет дешёвые билеты по выбранному направлению. Записывает данные в словарь ticket_dict"""
+        headers = {'X-Access-Token':self.token.token_travel,
+        'Accept-Encoding':'gzip, deflate'} 
+        url = f'http://api.travelpayouts.com/v1/prices/direct?origin={departure_city_code}&destination={arrival_city_code}'
+        try:
+            response = requests.request("GET",url,headers=headers,timeout=1)
+            #print(url+'&token='+token)
+            #pprint(response.json())
 
-                if response.json()['success'] :
-                    if  response.json()['data']:
-                        for flight in response.json()['data'][arrival_city_code].values():
-                            airline = flight['airline']
-                            departure_time = human_readable_date(flight['departure_at'])
-                            return_time = human_readable_date(flight['return_at'])
-                            flight_number = flight['flight_number']
-                            price = flight['price']
-                            expire_time = human_readable_date(flight['expires_at'])
-                            self.response_dict.update({'tickets':{'airline':airline,'departure_time':departure_time,
-                                'return_time':return_time,'flight_number':flight_number,'price':price,'expire_time':expire_time}})
-                            print(f'Стоимость: {price} Время вылета: {departure_time} Время возвращение: {return_time} Номер рейса: {flight_number} Авиакомпания: {airline} Истекает: {expire_time}')
-                    else:
-                        print('Empty response')
+            if response.json()['success'] :
+                if  response.json()['data']:
+                    for flight in response.json()['data'][arrival_city_code].values():
+                        airline = flight['airline']
+                        departure_time = human_readable_date(flight['departure_at'])
+                        return_time = human_readable_date(flight['return_at'])
+                        flight_number = flight['flight_number']
+                        price = flight['price']
+                        expire_time = human_readable_date(flight['expires_at'])
+                        self.tickets_dict.update({'airline':airline,'departure_time':departure_time,
+                            'return_time':return_time,'flight_number':flight_number,'price':price,'expire_time':expire_time,'success': True})
+                        #print(f'Стоимость: {price} Время вылета: {departure_time} Время возвращение: {return_time} Номер рейса: {flight_number} Авиакомпания: {airline} Истекает: {expire_time}')
+                        return self.tickets_dict
                 else:
-                    print("Unsuccessful response. Reason:", response.json()['error'] )
-            except requests.exceptions.RequestException:
-                print('Ошибка при загрузке данных')
+                    self.tickets_dict.update({'success': False, 'error_description': 'ticket API empty response'})
+                    print('Empty response')
+                    return self.tickets_dict
+            else:
+                self.tickets_dict.update({'success': False, 'error_description': 'ticket API unsuccess ticket API response'})
+                print("Unsuccessful response. Reason:", response.json()['error'] )
+                return self.tickets_dict
+        except requests.exceptions.RequestException:
+            print('Ошибка при загрузке данных')
+            self.tickets_dict.update({'success': False, 'error_description': 'ticket API unsuccess data download'})
+            return self.tickets_dict
 
-        def weather_request(self):
-            url = f'https://api.openweathermap.org/data/2.5/onecall?lat={arrival_city_lat}&lon={arrival_city_lon}&units=metric&exclude=minutely,hourly&lang=ru&appid={api_token.weather_token}'
-            print(url)
-            weather_list =[]
-            try:
-                weather_request = requests.get(url,timeout=0.5)
-                
-                for day in weather_request.json()['daily']:
-                    day_temp = day['temp']['day']
-                    day_temp_min = day['temp']['min']
-                    day_temp_max = day['temp']['max']
-                    day_wind_speed = day['wind_speed']
-                    date = human_readable_date(input=day['dt'],failed_iso=False, timestamp=True)
+    def weather(self,arrival_city_lon, arrival_city_lat):
+        """"Ищет погоду по указанным координатам. Записывает результат в словарь weather_dict"""
+        url = f'https://api.openweathermap.org/data/2.5/onecall?lat={arrival_city_lat}&lon={arrival_city_lon}&units=metric&exclude=minutely,hourly&lang=ru&appid={self.token.weather_token}'
+        weather_list =[]
+        try:
+            weather_request = requests.get(url,timeout=0.5)
+            
+            for day in weather_request.json()['daily']:
+                day_temp = day['temp']['day']
+                day_temp_min = day['temp']['min']
+                day_temp_max = day['temp']['max']
+                day_wind_speed = day['wind_speed']
+                date = human_readable_date(input=day['dt'],failed_iso=False, timestamp=True)
 
-                    for posible_day_weather in day['weather']:
-                        if day['weather'].index(posible_day_weather) == 0:
-                            primary_condition = posible_day_weather['main']
-                            primary_condition_description  = posible_day_weather['description']
-                            primary_condition_icon = posible_day_weather['icon']
-                            weather_list.append({'date':date,'day_temp':day_temp,'day_temp_min':day_temp_min,
-                                'day_temp_max':day_temp_max,'day_wind_speed':day_wind_speed,
-                                    'primary_condition':primary_condition,'primary_condition_description':primary_condition_description,
-                                        'primary_condition_icon':primary_condition_icon})
-                            break        
-                    #print(f"{date}: Температура воздуха {day_temp} | Максимум {day_temp_max} °C | Минимум {day_temp_min} °C | Скорость ветра {day_wind_speed} \
-                    #    \nВ основном {primary_condition} ({primary_condition_description}) >> Код картинка {primary_condition_icon}" )
-                
-                self.response_dict.update({'weather':weather_list})
-            except requests.exceptions.RequestException:
-                print("Timeout occured")
-                        
-        tickets(self)
-        weather_request(self)
+                for posible_day_weather in day['weather']:
+                    if day['weather'].index(posible_day_weather) == 0:
+                        primary_condition = posible_day_weather['main']
+                        primary_condition_description  = posible_day_weather['description']
+                        primary_condition_icon = posible_day_weather['icon']
+                        weather_list.append({'date':date,'day_temp':day_temp,'day_temp_min':day_temp_min,
+                            'day_temp_max':day_temp_max,'day_wind_speed':day_wind_speed,
+                                'primary_condition':primary_condition,'primary_condition_description':primary_condition_description,
+                                    'primary_condition_icon':primary_condition_icon})
+                        break        
+                #print(f"{date}: Температура воздуха {day_temp} | Максимум {day_temp_max} °C | Минимум {day_temp_min} °C | Скорость ветра {day_wind_speed} \
+                #    \nВ основном {primary_condition} ({primary_condition_description}) >> Код картинка {primary_condition_icon}" )
+            
+            self.weather_dict.update({'data':weather_list, 'success': True})
+            return self.weather_dict
+        except requests.exceptions.RequestException:
+            self.weather_dict.update({ 'success': True, 'error_description': 'weather API unsuccesfull data download'})
+            print("Timeout occured")
+            return self.weather_dict
 
     def run(self):
-        self.weather_and_tickets(**self.choosing_random_route(self.origin_city))
-
+        if  not self.init_validator(self.origin_city):
+            error_dict = ({'success': False, 'error_description': 'Invalid input'})
+            self.response_dict = error_dict
+        else:
+            route_dict = self.choosing_random_route(self.origin_city)
+            if route_dict['success']:
+                
+               
+                with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                    
+                    ticket_thread = executor.submit(self.tickets, *self.data_for_ticket)
+                    weather_thread = executor.submit(self.weather, *self.data_for_weather)
+                    tickets_dict = ticket_thread.result()
+                    weather_dict = weather_thread.result()
+                #tickets_dict = self.tickets(*self.data_for_ticket)
+                #weather_dict = self.weather(*self.data_for_weather)
+                
+                self.response_dict = {'route': route_dict, 'tickets': tickets_dict, 'weather': weather_dict }
+            else:
+                error_dict = ({'success': False, 'error_description': 'Invalid input'})
+                self.response_dict = error_dict
 
 if __name__ == '__main__':
     q = query('LED')
-    q.run()
-    pprint(q.response_dict)
-   
 
+    #q.choosing_random_route('LED')
+    start = time.time()
+    q.run()
+    end = time.time()
+    print(end - start)
+
+    #pprint(q.response_dict)
+    #pprint(q.tickets_dict)
+    #pprint(q.weather_dict)

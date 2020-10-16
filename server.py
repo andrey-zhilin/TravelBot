@@ -9,7 +9,7 @@ app = Flask(__name__)
 def generate(origin):
     q = query(origin)
     q.run()
-    pprint((json.dumps(q.response_dict, ensure_ascii=False)))
+    #pprint((json.dumps(q.response_dict, ensure_ascii=False)))
 
     return((json.dumps(q.response_dict, ensure_ascii=False)))
 
