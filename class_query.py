@@ -20,17 +20,19 @@ def human_readable_date(input, failed_iso=True, timestamp=False):
 
 
 class query():
-    def __init__(self,origin_city):
+    def __init__(self):
         self.token=api_token
         self.route_dict = {}
         self.weather_dict = {}
         self.tickets_dict = {}
-        self.origin_city = origin_city
-        self.init_validator(self.origin_city)
 
-    def init_validator(self, input):
+
+    def input_validator(self, input, rus=False):
         """"Проверяет введенные аргумент на соответствие регулярному выражению. Используется для защиты ввода"""
-        regex = '^[A-Z,a-z]+$'
+        if rus:
+            regex = '^[А-Я,а-я]+$'
+        else:
+            regex = '^[A-Z,a-z]+$'
         match = re.search(regex,input)
         if match:
             return True
@@ -147,12 +149,38 @@ class query():
             print("Timeout occured")
             return self.weather_dict
 
-    def run(self):
-        if  not self.init_validator(self.origin_city):
+    def city_resolver(self,input_symbols, db_filename='transport.db'):
+        """"Возвращает возможные название города, по фрагменту введенного по-русски названия города"""
+        connection = sqlite3.connect(db_filename)
+        cursor = connection.cursor()
+        query = f'SELECT city.name_primary, city_id, country.name_primary ' \
+            f'FROM city LEFT JOIN country WHERE (city.name_primary LIKE \'%{input_symbols.capitalize()}%\' OR city.name_primary LIKE \'%{input_symbols.lower()}%\') ' \
+                f'AND city.country_code == country.country_id LIMIT(5);'
+        #print(query)
+        cursor.execute(query)
+        response = cursor.fetchmany(5)
+        #print(response)
+        if response:
+            city_dict = {line[0]: {'code':line[1], 'country': line[2]} for line in response}
+            city_dict.update({'success': True})
+        else:
+            city_dict = {'success': False, 'error_description': 'city not founded'}
+        
+        #print(city_dict)
+        return city_dict
+
+    def run_city_resolver(self,input_symbols):
+        if self.input_validator(input_symbols, rus=True):
+            return self.city_resolver(input_symbols)
+        else:
+            return {'success': False, 'error_description': 'invalid city input'}
+
+    def run(self,origin_city):
+        if  not self.input_validator(origin_city):
             error_dict = ({'success': False, 'error_description': 'Invalid input'})
             self.response_dict = error_dict
         else:
-            route_dict = self.choosing_random_route(self.origin_city)
+            route_dict = self.choosing_random_route(origin_city)
             if route_dict['success']:
                 
                
